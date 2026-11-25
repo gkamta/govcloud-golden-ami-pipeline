@@ -1,0 +1,47 @@
+# Dependabot: automatic minor/patch updates, grouped into one PR per ecosystem.
+# Major bumps (new AWS provider major, etc.) change behavior or break
+# terraform validate, so they are ignored here and done by hand (CM-3).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: terraform
+    directory: /terraform/envs/dev
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: hashicorp/aws
+        update-types: [version-update:semver-major]
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+    groups:
+      terraform-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: terraform
+    directory: /terraform/envs/prod
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+    groups:
+      terraform-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: terraform
+    directory: /terraform/bootstrap
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
+    groups:
+      terraform-minor-patch:
+        update-types: [minor, patch]

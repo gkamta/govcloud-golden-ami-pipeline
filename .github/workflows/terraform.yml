@@ -1,0 +1,132 @@
+# Terraform plan on pull requests. Apply to dev (and prod) is gated by
+# GitHub Environment approvals on pushes to main. Uses GitHub OIDC —
+# no long-lived access keys (IA-2, AC-2).
+name: terraform
+
+on:
+  pull_request:
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  push:
+    branches: [main]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to apply (main only)
+        required: true
+        default: dev
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  contents: read
+
+env:
+  TF_VERSION: "1.9.8"
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-gov-west-1' }}
+
+jobs:
+  plan:
+    name: fmt, validate, and plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    env:
+      HAS_AWS: ${{ vars.AWS_CI_ROLE_ARN != '' && vars.TF_STATE_BUCKET != '' }}
+      TF_DIR: terraform/envs/dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - name: terraform fmt
+        run: terraform fmt -recursive -check -diff terraform
+      - name: terraform validate (all roots, no backend)
+        run: |
+          for dir in terraform/envs/dev terraform/envs/prod terraform/bootstrap; do
+            echo "::group::validate $dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+      - name: Skip notice
+        if: env.HAS_AWS != 'true'
+        run: echo "::notice::terraform plan skipped — set repo variables AWS_CI_ROLE_ARN and TF_STATE_BUCKET to enable."
+      - name: Configure AWS credentials (OIDC, no static keys)
+        if: env.HAS_AWS == 'true'
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          role-session-name: gha-tf-plan-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: terraform plan
+        if: env.HAS_AWS == 'true'
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=govcloud-golden-ami-pipeline/dev/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE || 'terraform-state-lock' }}" \
+            -backend-config="encrypt=true"
+          terraform plan -input=false -no-color -out=tfplan \
+            -var="aws_region=${AWS_REGION}" \
+            -var="github_repository=${{ github.repository }}" | tee plan.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: env.HAS_AWS == 'true'
+        with:
+          name: tfplan-dev
+          path: ${{ env.TF_DIR }}/plan.txt
+          retention-days: 30
+
+  apply:
+    name: apply ${{ matrix.environment }}
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', github.event.inputs.environment)) || fromJSON('["dev"]') }}
+    environment: ${{ matrix.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      HAS_AWS: ${{ vars.AWS_CI_ROLE_ARN != '' && vars.TF_STATE_BUCKET != '' }}
+      TF_DIR: terraform/envs/${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - name: Skip notice
+        if: env.HAS_AWS != 'true'
+        run: echo "::notice::terraform apply skipped — set AWS_CI_ROLE_ARN and TF_STATE_BUCKET."
+      - name: Configure AWS credentials (OIDC)
+        if: env.HAS_AWS == 'true'
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          role-session-name: gha-tf-apply-${{ matrix.environment }}-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: terraform apply
+        if: env.HAS_AWS == 'true'
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=govcloud-golden-ami-pipeline/${{ matrix.environment }}/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE || 'terraform-state-lock' }}" \
+            -backend-config="encrypt=true"
+          terraform apply -input=false -auto-approve \
+            -var="aws_region=${AWS_REGION}" \
+            -var="github_repository=${{ github.repository }}"

@@ -1,0 +1,110 @@
+# Bake, scan, tag, and publish a Windows Server 2022 golden AMI.
+# Manual dispatch or a monthly cron. Requires repo variables:
+#   AWS_CI_ROLE_ARN, PACKER_VPC_ID, PACKER_SUBNET_ID, PACKER_SG_ID,
+#   PACKER_INSTANCE_PROFILE, AMI_KMS_KEY_ID, ARTIFACTS_BUCKET
+# (set these after terraform apply). The job no-ops with a notice if they
+# are missing, so the workflow file itself stays valid on a fresh fork.
+name: ami-windows2022
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment tag (dev or prod)
+        required: true
+        default: dev
+        type: choice
+        options: [dev, prod]
+      source_ami:
+        description: Optional explicit source AMI ID
+        required: false
+        type: string
+  schedule:
+    # Monthly bake (01:00 UTC on the 1st) so patch cadence is automatic (SI-2).
+    - cron: "30 1 1 * *"
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-gov-west-1' }}
+  PACKER_VERSION: "1.14.2"
+  OS: windows2022
+  PACKER_DIR: packer/windows2022
+
+jobs:
+  bake:
+    name: Bake Windows Server 2022 golden AMI
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+      HAS_AWS: ${{ vars.AWS_CI_ROLE_ARN != '' && vars.PACKER_SUBNET_ID != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789 # v3.4.0
+        with:
+          version: ${{ env.PACKER_VERSION }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Install Ansible (RHEL bake)
+        if: env.OS == 'rhel9'
+        run: pip install "ansible-core>=2.16,<2.19"
+      - name: Skip notice
+        if: env.HAS_AWS != 'true'
+        run: |
+          echo "::notice::AMI bake skipped — set repo variables AWS_CI_ROLE_ARN, PACKER_VPC_ID, PACKER_SUBNET_ID, PACKER_SG_ID, PACKER_INSTANCE_PROFILE, AMI_KMS_KEY_ID to enable. This repo is a portfolio demo until those exist."
+      - name: Configure AWS credentials (OIDC, no static keys)
+        if: env.HAS_AWS == 'true'
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          role-session-name: gha-ami-windows2022-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: packer init
+        if: env.HAS_AWS == 'true'
+        run: packer init ${{ env.PACKER_DIR }}
+      - name: packer build
+        if: env.HAS_AWS == 'true'
+        id: build
+        env:
+          PKR_VAR_aws_region: ${{ env.AWS_REGION }}
+          PKR_VAR_environment: ${{ env.ENVIRONMENT }}
+          PKR_VAR_vpc_id: ${{ vars.PACKER_VPC_ID }}
+          PKR_VAR_subnet_id: ${{ vars.PACKER_SUBNET_ID }}
+          PKR_VAR_security_group_id: ${{ vars.PACKER_SG_ID }}
+          PKR_VAR_iam_instance_profile: ${{ vars.PACKER_INSTANCE_PROFILE }}
+          PKR_VAR_kms_key_id: ${{ vars.AMI_KMS_KEY_ID }}
+          PKR_VAR_artifacts_bucket: ${{ vars.ARTIFACTS_BUCKET }}
+          PKR_VAR_source_ami: ${{ github.event.inputs.source_ami }}
+        run: |
+          packer build -color=false -machine-readable ${{ env.PACKER_DIR }} | tee packer.log
+          ami_id="$(awk -F, '$5 == "id" && $6 ~ /ami-/ { split($6, a, ":"); print a[2]; }' packer.log | tail -1)"
+          if [ -z "$ami_id" ] && [ -f ${{ env.PACKER_DIR }}/manifest.json ]; then
+            ami_id="$(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(m["builds"][-1]["artifact_id"].split(":")[-1])' ${{ env.PACKER_DIR }}/manifest.json)"
+          fi
+          echo "ami_id=${ami_id}" >> "$GITHUB_OUTPUT"
+          echo "Baked AMI ${ami_id}"
+      - name: Publish AMI ID to SSM and confirm tags
+        if: env.HAS_AWS == 'true' && steps.build.outputs.ami_id != ''
+        env:
+          AMI_ID: ${{ steps.build.outputs.ami_id }}
+        run: |
+          aws ec2 create-tags --region "$AWS_REGION" --resources "$AMI_ID" --tags \
+            Key=GoldenAMI,Value=true Key=OS,Value="$OS" Key=Environment,Value="$ENVIRONMENT" \
+            Key=BuildUrl,Value="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          ./scripts/publish-ami-ssm.sh
+          ./scripts/deprecate-old-amis.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && env.HAS_AWS == 'true'
+        with:
+          name: windows2022-packer-logs
+          path: |
+            packer.log
+            packer/windows2022/manifest.json
+          if-no-files-found: ignore
+          retention-days: 30
