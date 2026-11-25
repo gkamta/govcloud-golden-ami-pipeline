@@ -1,0 +1,11 @@
+# Checkov config used locally (make scan) and in CI.
+framework:
+  - terraform
+  - github_actions
+  - secrets
+skip-path:
+  - .terraform
+  - .git
+compact: true
+quiet: true
+# Inline skips (# checkov:skip=...) each carry a written justification.

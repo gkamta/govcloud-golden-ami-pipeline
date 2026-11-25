@@ -1,0 +1,5 @@
+title = "govcloud-golden-ami-pipeline gitleaks config"
+
+# Start from the full upstream rule set.
+[extend]
+useDefault = true

@@ -1,0 +1,11 @@
+# Keep roles interview-clear and CI-clean. Offline lint does not require AWS.
+profile: production
+offline: true
+exclude_paths:
+  - .git/
+  - .terraform/
+  - .venv/
+  - artifacts/
+  - terraform/
+skip_list:
+  - yaml[line-length]
