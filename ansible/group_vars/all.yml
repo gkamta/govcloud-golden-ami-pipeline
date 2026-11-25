@@ -1,0 +1,10 @@
+---
+# Shared defaults. Override per OS in group_vars or with -e in Packer.
+project_name: golden-ami
+enable_fips: true
+legal_banner_title: DoD Notice and Consent Banner
+# Short placeholder. In an authorized environment, use the official DoD
+# notice text required by the STIG (RHEL-09-211020 / WN22-SO-000130).
+legal_banner_text: |
+  This is a U.S. Government system. Unauthorized access is prohibited.
+  Use of this system constitutes consent to monitoring.

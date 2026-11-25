@@ -1,0 +1,14 @@
+---
+# Baseline packages and time sync shared by every RHEL 9 golden image.
+- name: Ensure common packages are present
+  ansible.builtin.dnf:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: true
+
+- name: Ensure chronyd is enabled and running
+  ansible.builtin.service:
+    name: chronyd
+    state: started
+    enabled: true
+  # RHEL-09-252010 / RHEL-09-252015 — chrony installed and chronyd enabled (AU-8).

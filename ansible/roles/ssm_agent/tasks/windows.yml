@@ -1,0 +1,6 @@
+---
+- name: Ensure AmazonSSMAgent is enabled and running
+  ansible.windows.win_service:
+    name: "{{ ssm_agent_service_windows }}"
+    start_mode: auto
+    state: started

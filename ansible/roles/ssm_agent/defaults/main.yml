@@ -1,0 +1,3 @@
+---
+ssm_agent_service_linux: amazon-ssm-agent
+ssm_agent_service_windows: AmazonSSMAgent

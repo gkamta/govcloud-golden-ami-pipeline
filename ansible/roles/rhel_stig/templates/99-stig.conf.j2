@@ -1,0 +1,11 @@
+# Managed by the rhel_stig Ansible role. Do not edit on the instance.
+# RHEL-09-255040 — PermitEmptyPasswords no
+PermitEmptyPasswords no
+# RHEL-09-255045 — do not permit direct root logons over SSH
+PermitRootLogin no
+# RHEL-09-255100 — terminate unresponsive SSH sessions after 10 minutes
+# (ClientAliveInterval 600) used with RHEL-09-255095 (ClientAliveCountMax 1)
+ClientAliveInterval {{ rhel_stig_client_alive_interval }}
+ClientAliveCountMax {{ rhel_stig_client_alive_count_max }}
+# RHEL-09-255025 — display the notice banner on SSH logon
+Banner {{ rhel_stig_sshd_banner_path }}

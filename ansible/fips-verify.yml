@@ -1,0 +1,12 @@
+---
+# Second Packer pass, after the FIPS reboot. Confirms the kernel and the
+# system-wide crypto policy are actually in FIPS mode (RHEL-09-671010,
+# RHEL-09-215105) before the OpenSCAP gate runs.
+- name: Verify RHEL 9 FIPS mode after reboot
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: fips
+      vars:
+        fips_verify_only: true

@@ -1,0 +1,62 @@
+---
+# Curated subset of the Microsoft Windows Server 2022 STIG (DISA V2).
+# These are real STIG IDs. The same settings are also applied by
+# scripts/windows-stig.ps1 in the Packer Windows path.
+# Official catalog: https://public.cyber.mil (DISA STIG library)
+
+- name: Disable the built-in Guest account
+  ansible.windows.win_user:
+    name: Guest
+    account_disabled: true
+  # WN22-SO-000010 — built-in guest account must be disabled (IA-8).
+  failed_when: false
+
+- name: Set account lockout threshold
+  ansible.windows.win_shell: |
+    net accounts /lockoutthreshold:{{ windows_stig_lockout_threshold }}
+    net accounts /lockoutduration:{{ (windows_stig_lockout_duration_seconds / 60) | int }}
+    net accounts /lockoutwindow:{{ (windows_stig_lockout_window_seconds / 60) | int }}
+  # WN22-AC-000020 — bad logon attempts 3 or less (AC-7).
+  # WN22-AC-000010 — lockout duration 15 minutes or greater (AC-7).
+  # WN22-AC-000030 — reset counter after 15 minutes or greater (AC-7).
+  changed_when: true
+
+- name: Limit blank passwords to console logon only
+  ansible.windows.win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Control\Lsa
+    name: LimitBlankPasswordUse
+    data: 1
+    type: dword
+  # WN22-SO-000020 — prevent local accounts with blank passwords from the network (IA-5).
+
+- name: Digitally sign secure channel data when possible
+  ansible.windows.win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters
+    name: SignSecureChannel
+    data: 1
+    type: dword
+  # WN22-SO-000080 — Domain member: Digitally sign secure channel data (when possible) (SC-8).
+
+- name: Set the legal banner title
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: LegalNoticeCaption
+    data: "{{ windows_stig_legal_caption }}"
+    type: string
+  # WN22-SO-000140 — title for the legal banner dialog (AC-8).
+
+- name: Set the legal banner text
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: LegalNoticeText
+    data: "{{ windows_stig_legal_text }}"
+    type: string
+  # WN22-SO-000130 — required legal notice before console logon (AC-8).
+
+- name: Restrict anonymous access to named pipes and shares
+  ansible.windows.win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters
+    name: RestrictNullSessAccess
+    data: 1
+    type: dword
+  # WN22-SO-000250 — restrict anonymous access to Named Pipes and Shares (AC-3).

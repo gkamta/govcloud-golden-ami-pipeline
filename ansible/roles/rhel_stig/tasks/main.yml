@@ -1,0 +1,91 @@
+---
+# Curated subset of the Red Hat Enterprise Linux 9 STIG (DISA V2).
+# This is not a complete STIG baseline; it is a teaching set of real
+# control IDs that a golden-image pipeline should bake in and then
+# prove with OpenSCAP. Each task names the STIG ID in a comment.
+#
+# Official catalog: https://public.cyber.mil (DISA STIG library)
+
+- name: Ensure audit is installed
+  ansible.builtin.dnf:
+    name: audit
+    state: present
+  # RHEL-09-653010 — audit package must be installed (AU-12).
+
+- name: Ensure auditd is enabled and running
+  ansible.builtin.service:
+    name: auditd
+    state: started
+    enabled: true
+  # RHEL-09-653015 — audit service must be enabled (AU-12).
+
+- name: Ensure gpgcheck is enabled in the main dnf configuration
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/dnf.conf
+    regexp: '^gpgcheck='
+    line: gpgcheck=1
+    insertafter: '^[main]'
+    state: present
+  # RHEL-09-214015 — dnf must check GPG signatures of packages (SI-7, CM-5).
+
+- name: Find yum/dnf repository files
+  ansible.builtin.find:
+    paths: /etc/yum.repos.d
+    patterns: "*.repo"
+  register: rhel_stig_repos
+  # RHEL-09-214025 — gpgcheck must be enabled for every software repository.
+
+- name: Ensure gpgcheck is enabled in every repository file
+  ansible.builtin.replace:
+    path: "{{ item.path }}"
+    regexp: '^gpgcheck\s*=\s*0'
+    replace: gpgcheck=1
+  loop: "{{ rhel_stig_repos.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Install the legal banner for local console logon
+  ansible.builtin.template:
+    src: issue.j2
+    dest: "{{ rhel_stig_issue_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  # RHEL-09-211020 — Standard Mandatory DoD Notice and Consent Banner (AC-8).
+
+- name: Install the legal banner for SSH logon
+  ansible.builtin.template:
+    src: issue.j2
+    dest: "{{ rhel_stig_sshd_banner_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  # RHEL-09-255025 — banner before SSH logon (AC-8).
+
+- name: Deploy sshd STIG drop-in
+  ansible.builtin.template:
+    src: 99-stig.conf.j2
+    dest: "{{ rhel_stig_sshd_dropin }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart sshd
+  # RHEL-09-255040, RHEL-09-255045, RHEL-09-255095, RHEL-09-255100 (IA-2, SC-10).
+
+- name: Disable systemd Ctrl-Alt-Delete burst action
+  ansible.builtin.template:
+    src: 55-CtrlAltDel-BurstAction.conf.j2
+    dest: /etc/systemd/system.conf.d/55-CtrlAltDel-BurstAction.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+  # RHEL-09-211045 — CtrlAltDelBurstAction=none (AC-6).
+
+- name: Mask the ctrl-alt-del target
+  ansible.builtin.systemd:
+    name: ctrl-alt-del.target
+    masked: true
+    state: stopped
+    enabled: false
+  # RHEL-09-211050 — x86 Ctrl-Alt-Delete key sequence must be disabled (AC-6).

@@ -1,0 +1,26 @@
+---
+# Dynamic inventory of running instances tagged for this project.
+# Connection defaults to SSM so we do not need inbound SSH or WinRM
+# (matches the no-inbound security group in packer-build-infra).
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-gov-west-1
+filters:
+  instance-state-name:
+    - running
+  tag:Project:
+    - golden-ami
+keyed_groups:
+  - key: tags.OS
+    prefix: os
+  - key: tags.Role
+    prefix: role
+  - key: tags.Environment
+    prefix: env
+compose:
+  # amazon.aws.aws_ssm uses the instance ID, not a private IP.
+  ansible_host: instance_id
+  ansible_connection: "'amazon.aws.aws_ssm'"
+hostnames:
+  - tag:Name
+  - instance-id

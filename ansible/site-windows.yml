@@ -1,0 +1,10 @@
+---
+# Windows hardening used when Ansible is run over SSH (OpenSSH via SSM)
+# or WinRM. The Packer Windows path also applies the same settings with
+# scripts/windows-stig.ps1 so the bake does not depend on WinRM inbound.
+- name: Harden Windows Server 2022 golden image
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: ssm_agent
+    - role: windows_stig

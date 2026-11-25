@@ -1,0 +1,11 @@
+---
+# SSM Agent is how Packer and operators reach an instance that has no
+# inbound SSH or RDP. Official AWS AMIs usually include it; we only
+# enforce that the service is enabled.
+- name: Ensure SSM Agent on Red Hat
+  ansible.builtin.import_tasks: linux.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure SSM Agent on Windows
+  ansible.builtin.import_tasks: windows.yml
+  when: ansible_os_family == "Windows"

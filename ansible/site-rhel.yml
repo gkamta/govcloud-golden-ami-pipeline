@@ -1,0 +1,13 @@
+---
+# Harden a RHEL 9 Packer builder (or a tagged EC2 instance).
+# Roles are idempotent: a second run should report changed=0 if nothing drifted.
+- name: Harden RHEL 9 golden image
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: common
+    - role: ssm_agent
+    - role: rhel_stig
+    - role: fips
+      when: enable_fips | bool

@@ -1,0 +1,19 @@
+---
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Warn if SSM Agent is not installed
+  ansible.builtin.debug:
+    msg: >-
+      amazon-ssm-agent is not installed. Official RHEL AWS AMIs include it;
+      if this is a custom base, install the agent from the AWS repo before
+      baking in a no-inbound VPC.
+  when: "'amazon-ssm-agent' not in ansible_facts.packages"
+
+- name: Ensure amazon-ssm-agent is enabled and running
+  ansible.builtin.service:
+    name: "{{ ssm_agent_service_linux }}"
+    state: started
+    enabled: true
+  when: "'amazon-ssm-agent' in ansible_facts.packages"

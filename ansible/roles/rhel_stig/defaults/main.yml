@@ -1,0 +1,6 @@
+---
+rhel_stig_client_alive_interval: 600
+rhel_stig_client_alive_count_max: 1
+rhel_stig_sshd_dropin: /etc/ssh/sshd_config.d/99-stig.conf
+rhel_stig_issue_path: /etc/issue
+rhel_stig_sshd_banner_path: /etc/issue.net

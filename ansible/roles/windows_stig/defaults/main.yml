@@ -1,0 +1,6 @@
+---
+windows_stig_lockout_threshold: 3
+windows_stig_lockout_duration_seconds: 900
+windows_stig_lockout_window_seconds: 900
+windows_stig_legal_caption: "{{ legal_banner_title }}"
+windows_stig_legal_text: "{{ legal_banner_text }}"

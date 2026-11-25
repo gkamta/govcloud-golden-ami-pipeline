@@ -1,0 +1,11 @@
+---
+# Packages that make the image operable and scannable.
+common_packages:
+  - chrony
+  - audit
+  - sudo
+  - vim-minimal
+  - wget
+  - tar
+  - openscap-scanner
+  - scap-security-guide

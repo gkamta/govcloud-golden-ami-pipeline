@@ -1,0 +1,55 @@
+---
+# RHEL-09-671010 — the system must enable FIPS mode
+#   (/proc/sys/crypto/fips_enabled == 1).
+# RHEL-09-215105 — system-wide crypto policy must be FIPS (FIPS 140-3).
+# Enabling FIPS requires a reboot; Packer handles that between this role
+# and ansible/fips-verify.yml (SC-13, SC-8).
+
+- name: Read current kernel FIPS flag
+  ansible.builtin.slurp:
+    src: /proc/sys/crypto/fips_enabled
+  register: fips_flag
+  failed_when: false
+
+- name: Record whether the kernel is already in FIPS mode
+  ansible.builtin.set_fact:
+    fips_kernel_enabled: "{{ (fips_flag.content | default('') | b64decode | trim) == '1' }}"
+
+- name: Enable FIPS mode (requires reboot)
+  ansible.builtin.command: fips-mode-setup --enable
+  register: fips_enable
+  changed_when: fips_enable.rc == 0
+  when: not fips_verify_only | bool and not fips_kernel_enabled
+
+- name: Read the current system-wide crypto policy
+  ansible.builtin.command: update-crypto-policies --show
+  register: fips_policy_current
+  changed_when: false
+  when: not fips_verify_only | bool
+
+- name: Set the system-wide crypto policy to FIPS
+  ansible.builtin.command: update-crypto-policies --set FIPS
+  register: fips_policy_set
+  changed_when: fips_policy_set.rc == 0
+  when: not fips_verify_only | bool and (fips_policy_current.stdout | default('') | trim) != "FIPS"
+
+- name: Leave a reboot marker for Packer when FIPS was just enabled
+  ansible.builtin.copy:
+    dest: "{{ fips_reboot_marker }}"
+    content: "fips-mode-setup required a reboot\n"
+    mode: "0644"
+  when: not fips_verify_only | bool and not fips_kernel_enabled
+
+- name: Assert the kernel FIPS flag is 1
+  ansible.builtin.command: cat /proc/sys/crypto/fips_enabled
+  register: fips_flag_now
+  changed_when: false
+  failed_when: fips_flag_now.stdout | trim != "1"
+  when: fips_verify_only | bool
+
+- name: Assert the system-wide crypto policy is FIPS
+  ansible.builtin.command: update-crypto-policies --show
+  register: fips_policy_now
+  changed_when: false
+  failed_when: fips_policy_now.stdout | trim != "FIPS"
+  when: fips_verify_only | bool

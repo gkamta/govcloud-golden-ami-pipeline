@@ -1,0 +1,3 @@
+---
+fips_verify_only: false
+fips_reboot_marker: /var/tmp/fips-reboot-required
