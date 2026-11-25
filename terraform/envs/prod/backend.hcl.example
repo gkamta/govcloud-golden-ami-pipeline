@@ -1,0 +1,6 @@
+bucket         = "CHANGE-ME-tfstate-123456789012"
+key            = "govcloud-golden-ami-pipeline/prod/terraform.tfstate"
+region         = "us-gov-west-1"
+dynamodb_table = "terraform-state-lock"
+encrypt        = true
+# kms_key_id   = "arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/..."

@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars (gitignored) and fill in account-specific values.
+aws_region          = "us-gov-west-1"
+expected_partition  = "aws-us-gov"
+# Commercial fallback example:
+# aws_region         = "us-west-2"
+# expected_partition = "aws"
+# availability_zone  = "us-west-2a"
+
+environment             = "dev"
+vpc_cidr                = "10.50.0.0/16"
+private_subnet_cidr     = "10.50.1.0/24"
+public_subnet_cidr      = "10.50.0.0/24"
+availability_zone       = "us-gov-west-1a"
+enable_nat_gateway      = true
+fallback_to_base_ami    = true
+artifacts_bucket_name   = "CHANGE-ME-golden-ami-artifacts-dev-123456789012"
+github_repository       = "gkamta/govcloud-golden-ami-pipeline"
+create_github_oidc_provider = true
+owner                   = "gkamta"
