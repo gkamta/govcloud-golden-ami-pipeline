@@ -1,4 +1,4 @@
-# Keep roles interview-clear and CI-clean. Offline lint does not require AWS.
+# Keep roles readable and CI-clean. Offline lint does not require AWS.
 profile: production
 offline: true
 exclude_paths:

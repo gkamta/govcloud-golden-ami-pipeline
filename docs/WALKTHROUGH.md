@@ -1,6 +1,6 @@
 # Walkthrough: git push to a running, patched instance
 
-Read this in order. It follows the pipeline the way a bake actually runs, not the way the folders are arranged on disk. For each step you will see what happens, which file to open, why it is designed that way, what usually breaks, and a sentence you can say in the interview.
+Read this in order. It follows the pipeline the way a bake actually runs, not the way the folders are arranged on disk. For each step you will see what happens, which file to open, why it is designed that way, what usually breaks, and a short key takeaway for each step.
 
 This repository is a **portfolio demo validated offline**. Nothing here has been applied or baked in a real AWS account until you do that yourself.
 
@@ -65,7 +65,7 @@ with:
 
 **What goes wrong.** `Not authorized to perform sts:AssumeRoleWithWebIdentity` usually means the OIDC provider is missing in the account, `create_github_oidc_provider` should be true on the first apply, the `sub` does not match (wrong repo name or branch), or `AWS_CI_ROLE_ARN` is unset. Also confirm you are in the GovCloud partition — commercial credentials will not work there.
 
-**How to say it in the interview.** "The pipeline never stores AWS access keys. GitHub OIDC hands the workflow a short-lived role that is trusted only for this repository and these branches, which is the same pattern I used in my EKS DevSecOps demo."
+**Key takeaway.** The pipeline never stores AWS access keys. GitHub OIDC hands the workflow a short-lived role that is trusted only for this repository and these branches — the same pattern used in the companion [devsecops-eks-demo](https://github.com/gkamta/devsecops-eks-demo) repository.
 
 ---
 
@@ -93,7 +93,7 @@ The environment root (`terraform/envs/dev/main.tf`) wires this module together w
 
 **What goes wrong.** Packer hangs on SSH if the instance profile is missing, the SSM endpoints are missing (especially `ssmmessages`), private DNS on the endpoints is off, or the security group cannot reach those endpoints on 443. In a no-NAT prod bake, dnf or Windows Update will also fail unless you have a mirrored repo.
 
-**How to say it in the interview.** "The Packer builder lives in a private subnet with no inbound security-group rules. I reach it through SSM Session Manager and VPC endpoints, which is the pattern I'd use in a GovCloud enclave."
+**Key takeaway.** The Packer builder lives in a private subnet with no inbound security-group rules. Access is through SSM Session Manager and VPC endpoints, which is the pattern used in a typical GovCloud enclave.
 
 ---
 
@@ -123,7 +123,7 @@ Region and partition variables default to `us-gov-west-1` / `aws-us-gov`. You ca
 
 **What goes wrong.** Wrong `ssh_username` (`ec2-user` vs `cloud-user` on some RHEL AMIs). Windows user data did not finish before Packer tried to connect — look at `C:\Windows\Temp\packer-userdata.log` and the instance screenshot or serial console. Missing KMS grants on the CI role or the instance role will fail `encrypt_boot`. If `source_ami` is empty, the name filter / owner IDs must be valid **in that partition**; confirm the Red Hat owner ID in GovCloud before a real bake.
 
-**How to say it in the interview.** "Packer bakes the image in place, with IMDSv2 and KMS encryption on from the start, and it talks to the builder only through Session Manager."
+**Key takeaway.** Packer bakes the image in place, with IMDSv2 and KMS encryption on from the start, and it talks to the builder only through Session Manager.
 
 ---
 
@@ -148,7 +148,7 @@ Roles are written to be **idempotent**: a second run should not keep changing th
 
 **What goes wrong.** Ansible cannot find the builder if the SSM connection or Python interpreter is wrong (`ansible_python_interpreter=/usr/bin/python3` is set in the Packer provisioner). A drop-in under `/etc/ssh/sshd_config.d/` will not apply if a later file overrides it — we use `99-stig.conf` so it wins. On Windows, a failed sysprep later is usually leftover specialize state, not these registry keys; still, test a launch from the AMI in a non-prod account first.
 
-**How to say it in the interview.** "Terraform builds the infrastructure; Ansible or PowerShell hardens the guest. I bake a curated set of real STIG IDs into the image so compliance is the default, then I scan to prove it."
+**Key takeaway.** Terraform builds the infrastructure; Ansible or PowerShell hardens the guest. A curated set of real STIG IDs is baked into the image so compliance is the default, then a scan proves it.
 
 ---
 
@@ -171,7 +171,7 @@ provisioner "shell" {
 
 **What goes wrong.** If you skip the reboot, the verify playbook fails. Some tools misbehave under FIPS; that is why verify runs **before** the scan gate and why this belongs in the bake, not on first boot of a production instance. Enabling FIPS on an already-registered system can also be painful — another reason we do it in Packer.
 
-**How to say it in the interview.** "FIPS is enabled in the image build and verified after reboot, because it is a kernel-level change. I would rather fail the bake than discover it is off in production."
+**Key takeaway.** FIPS is enabled in the image build and verified after reboot, because it is a kernel-level change. The bake should fail rather than publish an image that has FIPS off.
 
 ---
 
@@ -196,7 +196,7 @@ Artifacts land under `/var/tmp/scan-artifacts` (or `C:\scan-artifacts`) and are 
 
 **What goes wrong.** `openscap-scanner` or `scap-security-guide` missing — the `common` role should have installed them. Profile or content path differences between SSG versions. A CAT I you have not automated yet will (correctly) fail the bake; document an official exception or fix the role, do not lower the gate. For Evaluate-STIG, "not installed" is expected on this public demo.
 
-**How to say it in the interview.** "The image is not published until OpenSCAP evaluates the DISA STIG profile and the gate shows zero CAT I findings. A failed scan fails the bake, which is the point of the gate."
+**Key takeaway.** The image is not published until OpenSCAP evaluates the DISA STIG profile and the gate shows zero CAT I findings. A failed scan fails the bake, which is the point of the gate.
 
 ---
 
@@ -210,7 +210,7 @@ Artifacts land under `/var/tmp/scan-artifacts` (or `C:\scan-artifacts`) and are 
 
 **What goes wrong.** A tag typo means the launch-template data source cannot find the AMI (`tag:GoldenAMI=true` plus `tag:OS` and `tag:Environment`). KMS key policy must allow the destination account if you later share encrypted AMIs — that is the usual surprise in multi-account sharing.
 
-**How to say it in the interview.** "Every golden AMI is versioned in the name and tagged so Terraform can look up the latest approved image by OS and environment, not by a hard-coded AMI ID."
+**Key takeaway.** Every golden AMI is versioned in the name and tagged so Terraform can look up the latest approved image by OS and environment, not by a hard-coded AMI ID.
 
 ---
 
@@ -237,7 +237,7 @@ aws ssm put-parameter --name "${PARAMETER}" --type String --value "${AMI_ID}" --
 
 **What goes wrong.** The CI role is missing `ssm:PutParameter` on that ARN (the OIDC module is wired to `module.ami_lifecycle.parameter_arns`). A typo in `OS=` publishes under the wrong path. Parameter store is regional — use the same region as the bake.
 
-**How to say it in the interview.** "The bake pipeline publishes the AMI ID to `/golden-ami/rhel9/latest` after the scan gate passes, and Terraform leaves that value alone so the pipeline owns the pointer."
+**Key takeaway.** The bake pipeline publishes the AMI ID to `/golden-ami/rhel9/latest` after the scan gate passes, and Terraform leaves that value alone so the pipeline owns the pointer.
 
 ---
 
@@ -264,7 +264,7 @@ Dev and prod each declare a RHEL 9 fleet and a Windows Server 2022 fleet in `ter
 
 **What goes wrong.** First apply in prod with no golden AMI and no fallback will fail the AMI lookup — bake dev first, or pass `ami_id`. An instance refresh that is too aggressive can drop capacity; we keep `min_healthy_percentage` at 90. If instances never become healthy, check the SG (no inbound is fine if SSM is the access path), the instance profile, and whether the Windows AMI was sysprep'd correctly (step 3 / 10 in your own troubleshooting).
 
-**How to say it in the interview.** "When a new golden AMI is published, the launch template picks it up and the Auto Scaling group does a rolling instance refresh. Patching is replacing the image, not logging into servers."
+**Key takeaway.** When a new golden AMI is published, the launch template picks it up and the Auto Scaling group does a rolling instance refresh. Patching is replacing the image, not logging into servers.
 
 ---
 
@@ -278,7 +278,7 @@ Dev and prod each declare a RHEL 9 fleet and a Windows Server 2022 fleet in `ter
 
 **What goes wrong.** Forgetting to skip the current pointer would deprecate the AMI you just published. `--deprecate-at` must be a valid timestamp. The CI role needs `ec2:EnableImageDeprecation`. Deregistering too early will break existing launch templates that still reference the old ID — deprecate first, deregister later, after the fleet has moved.
 
-**How to say it in the interview.** "Once the new AMI is the SSM pointer, older golden AMIs are deprecated so they drop out of new launches, but running instances are not yanked out from under the mission owner."
+**Key takeaway.** Once the new AMI is the SSM pointer, older golden AMIs are deprecated so they drop out of new launches, but running instances are not terminated out from under a workload.
 
 ---
 
@@ -292,7 +292,7 @@ Dev and prod each declare a RHEL 9 fleet and a Windows Server 2022 fleet in `ter
 
 **What goes wrong.** Reports left only on the builder instance disappear when Packer terminates it — that is why we copy them to S3 before teardown. Docs updated in a different PR than the code change will drift.
 
-**How to say it in the interview.** "The scan report is kept with the bake as ATO evidence, and the design notes live in Git next to the Terraform, so documentation changes with the pipeline instead of going stale."
+**Key takeaway.** The scan report is kept with the bake as authorization evidence, and the design notes live in Git next to the Terraform, so documentation changes with the pipeline instead of going stale.
 
 ---
 

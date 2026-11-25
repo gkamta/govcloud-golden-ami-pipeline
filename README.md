@@ -6,7 +6,7 @@ Golden AMI factory for **RHEL 9** and **Windows Server 2022**, aimed at AWS GovC
 
 Owner: **gkamta**. Companion to [devsecops-eks-demo](https://github.com/gkamta/devsecops-eks-demo).
 
-If you are preparing for an interview, start with [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) and [`docs/INTERVIEW-CHEATSHEET.md`](docs/INTERVIEW-CHEATSHEET.md).
+Start with [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) for a step-by-step tour of the pipeline. To deploy the demo into a personal commercial AWS account, follow [`docs/DEPLOY-COMMERCIAL.md`](docs/DEPLOY-COMMERCIAL.md).
 
 ## How a bake flows
 
@@ -69,13 +69,17 @@ Or: `make ci` (also runs tflint, Checkov, and the OpenSCAP gate unit test).
 
 ## How to run (in an AWS account, when you are ready)
 
-1. Create an empty public repo `gkamta/govcloud-golden-ami-pipeline` and push this history (see the push commands in the notes you received with the zip).
+For a personal **commercial** AWS account in `us-east-1`, follow the numbered commands in [`docs/DEPLOY-COMMERCIAL.md`](docs/DEPLOY-COMMERCIAL.md). It covers the $10 budget alert, bootstrap, commercial `tfvars`, GitHub variables, a RHEL bake, Session Manager access, costs, and teardown.
+
+The short version for any account (defaults are GovCloud):
+
+1. Push this history to `gkamta/govcloud-golden-ami-pipeline`.
 2. Apply `terraform/bootstrap` once to create the state bucket and lock table.
-3. Copy `terraform/envs/dev/backend.hcl.example` and `terraform.tfvars.example`, edit them, then `terraform init -backend-config=backend.hcl && terraform apply`.
-4. Set GitHub Actions variables: `AWS_CI_ROLE_ARN` (from the apply output), `AWS_REGION`, `TF_STATE_BUCKET`, `PACKER_VPC_ID`, `PACKER_SUBNET_ID`, `PACKER_SG_ID`, `PACKER_INSTANCE_PROFILE`, `AMI_KMS_KEY_ID`, `ARTIFACTS_BUCKET`. Create GitHub Environments `dev` and `prod` with required reviewers for apply.
+3. Copy `terraform/envs/dev/backend.hcl.example` and `terraform.tfvars.example` (or `terraform.tfvars.commercial.example` for commercial `us-east-1`), edit them, then `terraform init -backend-config=backend.hcl && terraform apply`.
+4. Set GitHub Actions variables: `AWS_CI_ROLE_ARN` (from the apply output), `AWS_REGION`, `TF_STATE_BUCKET`, `TF_LOCK_TABLE`, `PACKER_VPC_ID`, `PACKER_SUBNET_ID`, `PACKER_SG_ID`, `PACKER_INSTANCE_PROFILE`, `AMI_KMS_KEY_ID`, `ARTIFACTS_BUCKET`. Create GitHub Environments `dev` and `prod`. Required reviewers for apply are recommended for prod.
 5. Dispatch `.github/workflows/ami-rhel.yml` (and later `ami-windows.yml`). The jobs no-op with a notice until those variables exist.
 
-Confirm Red Hat AMI owner IDs in the target GovCloud partition before a real RHEL bake. In a disconnected enclave, leave `enable_nat_gateway = false` and point the builder at a mirrored repo.
+Confirm Red Hat AMI owner IDs in the target partition before a real RHEL bake. In a disconnected enclave, leave `enable_nat_gateway = false` and point the builder at a mirrored repo.
 
 ## License
 

@@ -1,0 +1,30 @@
+# Copy to terraform.tfvars (gitignored) for a personal commercial AWS account.
+# Replace ACCOUNT_ID, and set allowed_account_ids after you confirm the account.
+# See docs/DEPLOY-COMMERCIAL.md for the full walkthrough.
+
+aws_region         = "us-east-1"
+expected_partition = "aws"
+availability_zone  = "us-east-1a"
+# allowed_account_ids = ["ACCOUNT_ID"]
+
+environment           = "dev"
+vpc_cidr              = "10.50.0.0/16"
+private_subnet_cidr   = "10.50.1.0/24"
+public_subnet_cidr    = "10.50.0.0/24"
+enable_nat_gateway    = true
+fallback_to_base_ami  = true
+
+# Keep the demo fleets at zero until a bake has published a golden AMI.
+rhel9_instance_type    = "t3.small"
+windows_instance_type  = "t3.medium"
+asg_min_size           = 0
+asg_max_size           = 1
+asg_desired_capacity   = 0
+
+artifacts_bucket_name       = "golden-ami-artifacts-dev-ACCOUNT_ID"
+github_repository           = "gkamta/govcloud-golden-ami-pipeline"
+create_github_oidc_provider = true
+# After bootstrap, fill these so the CI role can use the remote state:
+# state_bucket_arn = "arn:aws:s3:::golden-ami-tfstate-ACCOUNT_ID"
+# lock_table_arn   = "arn:aws:dynamodb:us-east-1:ACCOUNT_ID:table/terraform-state-lock"
+owner = "gkamta"

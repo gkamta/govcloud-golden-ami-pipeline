@@ -110,3 +110,33 @@ variable "extra_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "rhel9_instance_type" {
+  description = "Instance type for the RHEL 9 demo Auto Scaling group."
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "windows_instance_type" {
+  description = "Instance type for the Windows Server 2022 demo Auto Scaling group."
+  type        = string
+  default     = "t3.large"
+}
+
+variable "asg_min_size" {
+  description = "Minimum size for both demo Auto Scaling groups."
+  type        = number
+  default     = 1
+}
+
+variable "asg_max_size" {
+  description = "Maximum size for both demo Auto Scaling groups."
+  type        = number
+  default     = 2
+}
+
+variable "asg_desired_capacity" {
+  description = "Desired capacity for both demo Auto Scaling groups. Use 0 to apply infrastructure without launching instances."
+  type        = number
+  default     = 1
+}

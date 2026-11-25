@@ -106,7 +106,10 @@ module "fleet_rhel9" {
   fallback_to_base_ami     = var.fallback_to_base_ami
   fallback_ami_owners      = ["amazon", "309956199498"]
   fallback_ami_name_filter = "RHEL-9*_HVM-*-x86_64-*"
-  instance_type            = "t3.medium"
+  instance_type            = var.rhel9_instance_type
+  min_size                 = var.asg_min_size
+  max_size                 = var.asg_max_size
+  desired_capacity         = var.asg_desired_capacity
   instance_profile_name    = module.packer_build.instance_profile_name
   security_group_ids       = [aws_security_group.fleet.id]
   subnet_ids               = [module.packer_build.subnet_id]
@@ -125,7 +128,10 @@ module "fleet_windows2022" {
   fallback_to_base_ami     = var.fallback_to_base_ami
   fallback_ami_owners      = ["amazon"]
   fallback_ami_name_filter = "Windows_Server-2022-English-Full-Base-*"
-  instance_type            = "t3.large"
+  instance_type            = var.windows_instance_type
+  min_size                 = var.asg_min_size
+  max_size                 = var.asg_max_size
+  desired_capacity         = var.asg_desired_capacity
   instance_profile_name    = module.packer_build.instance_profile_name
   security_group_ids       = [aws_security_group.fleet.id]
   subnet_ids               = [module.packer_build.subnet_id]
