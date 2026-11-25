@@ -40,6 +40,7 @@ scan-artifacts/
 manifest.json
 oscap-*.xml
 oscap-*.html
+!scripts/testdata/oscap-*.xml
 evaluate-stig-*/
 
 # Secrets and local env

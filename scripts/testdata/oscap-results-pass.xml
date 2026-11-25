@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<Benchmark xmlns="http://checklists.nist.gov/xccdf/1.2">
+  <TestResult>
+    <rule-result severity="high"><result>pass</result></rule-result>
+    <rule-result severity="medium"><result>fail</result></rule-result>
+  </TestResult>
+</Benchmark>
