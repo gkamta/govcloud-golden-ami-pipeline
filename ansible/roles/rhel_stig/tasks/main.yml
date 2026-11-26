@@ -61,6 +61,19 @@
     group: root
     mode: "0644"
   # RHEL-09-255025 — banner before SSH logon (AC-8).
+  
+- name: Ensure drop-in directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ rhel_stig_sshd_dropin | dirname }}"
+    - /etc/systemd/system.conf.d
+  # Minimal cloud images do not always ship these directories, and the
+  # template module will not create a missing parent directory.
 
 - name: Deploy sshd STIG drop-in
   ansible.builtin.template:
