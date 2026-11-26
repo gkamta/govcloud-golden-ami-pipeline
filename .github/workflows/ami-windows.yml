@@ -82,6 +82,7 @@ jobs:
           PKR_VAR_artifacts_bucket: ${{ vars.ARTIFACTS_BUCKET }}
           PKR_VAR_source_ami: ${{ github.event.inputs.source_ami }}
         run: |
+          set -o pipefail
           packer build -color=false -machine-readable ${{ env.PACKER_DIR }} | tee packer.log
           ami_id="$(awk -F, '$5 == "id" && $6 ~ /ami-/ { split($6, a, ":"); print a[2]; }' packer.log | tail -1)"
           if [ -z "$ami_id" ] && [ -f ${{ env.PACKER_DIR }}/manifest.json ]; then
