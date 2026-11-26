@@ -61,7 +61,7 @@
     group: root
     mode: "0644"
   # RHEL-09-255025 — banner before SSH logon (AC-8).
-  
+
 - name: Ensure drop-in directories exist
   ansible.builtin.file:
     path: "{{ item }}"
