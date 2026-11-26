@@ -267,7 +267,7 @@ build {
       "AMI_NAME=${local.ami_name}",
     ]
     inline = [
-            "if [ -n \"$${ARTIFACTS_BUCKET}\" ] && command -v aws >/dev/null 2>&1; then aws s3 cp --recursive /var/tmp/scan-artifacts \"s3://$${ARTIFACTS_BUCKET}/rhel9/$${AMI_NAME}/\"; else echo 'Skipping S3 upload (no bucket or no AWS CLI on the builder)'; fi",
+      "if [ -n \"$${ARTIFACTS_BUCKET}\" ] && command -v aws >/dev/null 2>&1; then aws s3 cp --recursive /var/tmp/scan-artifacts \"s3://$${ARTIFACTS_BUCKET}/rhel9/$${AMI_NAME}/\"; else echo 'Skipping S3 upload (no bucket or no AWS CLI on the builder)'; fi",
     ]
   }
 
