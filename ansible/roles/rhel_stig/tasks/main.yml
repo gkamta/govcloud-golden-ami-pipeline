@@ -83,8 +83,7 @@
     group: root
     mode: "0644"
   notify: Restart sshd
-  
-  # RHEL-09-255040, RHEL-09-255045, RHEL-09-255095, RHEL-09-255100 (IA-2, SC-10).
+ # RHEL-09-255040, RHEL-09-255045, RHEL-09-255095, RHEL-09-255100 (IA-2, SC-10).
 
 - name: Disable systemd Ctrl-Alt-Delete burst action
   ansible.builtin.template:
