@@ -53,7 +53,9 @@ jobs:
           python-version: "3.13"
       - name: Install Ansible (RHEL bake)
         if: env.OS == 'rhel9'
-        run: pip install "ansible-core>=2.16,<2.19"
+        run: |
+          pip install "ansible-core>=2.16,<2.19"
+          ansible-galaxy collection install -r ansible/requirements.yml
       - name: Skip notice
         if: env.HAS_AWS != 'true'
         run: |

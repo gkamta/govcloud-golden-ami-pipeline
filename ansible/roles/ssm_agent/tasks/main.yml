@@ -2,10 +2,15 @@
 # SSM Agent is how Packer and operators reach an instance that has no
 # inbound SSH or RDP. Official AWS AMIs usually include it; we only
 # enforce that the service is enabled.
+#
+# include_tasks (dynamic) rather than import_tasks (static): a static import
+# makes Ansible resolve every module in windows.yml while parsing, so a RHEL
+# bake would fail if the ansible.windows collection is not installed, even
+# though those tasks would be skipped.
 - name: Ensure SSM Agent on Red Hat
-  ansible.builtin.import_tasks: linux.yml
+  ansible.builtin.include_tasks: linux.yml
   when: ansible_os_family == "RedHat"
 
 - name: Ensure SSM Agent on Windows
-  ansible.builtin.import_tasks: windows.yml
+  ansible.builtin.include_tasks: windows.yml
   when: ansible_os_family == "Windows"
