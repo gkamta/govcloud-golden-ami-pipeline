@@ -126,6 +126,10 @@ source "amazon-ebs" "rhel9" {
   ami_description = "STIG-hardened RHEL 9 golden AMI (${var.environment})"
   source_ami      = var.source_ami == "" ? null : var.source_ami
 
+  # RHEL AMIs do not include the SSM agent; install it at boot so Packer
+  # can reach the builder through Session Manager (no inbound SSH).
+  user_data_file = "${path.root}/../../scripts/rhel-userdata.sh"
+
   dynamic "source_ami_filter" {
     for_each = local.source_ami_filter_enabled ? [1] : []
     content {
